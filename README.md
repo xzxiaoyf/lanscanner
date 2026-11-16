@@ -1,4 +1,4 @@
-# lanscanner
+# LANScanner
 
 #### 介绍
 用SWIFT写了一个局域网 IP 扫描程序，支持 WOL 网络唤醒。MAC 上运行。
