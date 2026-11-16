@@ -137,11 +137,11 @@ final class PreferencesViewController: NSViewController {
         } else {
             networkDropdown.selectedIndex = 0
         }
-        pickerCheckbox.state = settings.showNetworkPicker ? .on : .off
+        pickerCheckbox.setOn(settings.showNetworkPicker)
         wolPortDropdown.selectedIndex = settings.wolPortMode.rawValue
         wolBroadcastField.stringValue = settings.wolBroadcast
         wolRepeatDropdown.selectedIndex = Swift.min(Swift.max(settings.wolRepeatCount - 1, 0), 2)
-        wolVerifyCheckbox.state = settings.wolVerifyAfterWake ? .on : .off
+        wolVerifyCheckbox.setOn(settings.wolVerifyAfterWake)
         refreshCurrentNetwork()
         updateCustomState()
     }
@@ -161,12 +161,10 @@ final class PreferencesViewController: NSViewController {
     }
 
     @objc private func pickerCheckboxChanged() {
-        pickerCheckbox.state = pickerCheckbox.state == .on ? .off : .on
         ScanSettings.shared.showNetworkPicker = pickerCheckbox.state == .on
     }
 
     @objc private func wolVerifyToggled() {
-        wolVerifyCheckbox.state = wolVerifyCheckbox.state == .on ? .off : .on
         ScanSettings.shared.wolVerifyAfterWake = wolVerifyCheckbox.state == .on
     }
 

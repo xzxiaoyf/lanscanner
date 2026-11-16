@@ -233,20 +233,65 @@ final class DarkTextField: NSTextField {
     }
 }
 
-/// 自绘复选框：避免系统 NSButtonCell 在离屏渲染中不绘制
+/// 自绘复选框：避免系统 NSButtonCell 在离屏渲染中不绘制。
+/// 同时完全接管点击：默认 NSButton 是「瞬时按钮」，NSButtonCell 会在鼠标抬起时
+/// 把 state 复位为 off；再叠加各界面 action 里的手动翻转，勾选状态会被覆盖，
+/// 且手动改 state 不会触发本类自绘内容的重绘，表现为「复选框点不动」。
 final class CheckToggle: NSButton {
     convenience init(title: String) {
         self.init(frame: .zero)
         self.title = title
         isBordered = false
-        state = .off
+        setOn(false)
     }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         isBordered = false
+        state = .off
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    /// 诊断用：记录显式请求自绘重绘的次数（NSView.needsDisplay 在离屏视图上不可靠）
+    private(set) var redrawCount = 0
+
+    /// 统一入口：写入状态并确保自绘内容刷新
+    func setOn(_ on: Bool) {
+        state = on ? .on : .off
+        needsDisplay = true
+        redrawCount += 1
+    }
+
+    /// 鼠标、键盘、自检共用的切换逻辑：只翻转一次，并派发 target/action
+    func toggle() {
+        guard isEnabled else { return }
+        setOn(state != .on)
+        guard let action = action else { return }
+        if !NSApplication.shared.sendAction(action, to: target, from: self),
+           let object = target as? NSObject {
+            _ = object.perform(action, with: self)
+        }
+    }
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        // 不调用 super：避免 NSButtonCell 的瞬时状态机复位 state
+        toggle()
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        // 由 mouseDown 完整处理；调用 super 会把刚设置的状态改回 off
+    }
+
+    override func keyDown(with event: NSEvent) {
+        let key = event.charactersIgnoringModifiers ?? ""
+        if key == " " || key == "\r" {
+            toggle()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
 
     override func draw(_ dirtyRect: NSRect) {
         let side: CGFloat = 16

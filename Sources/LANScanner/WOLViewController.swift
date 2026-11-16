@@ -153,7 +153,7 @@ final class WOLViewController: NSViewController, NSTableViewDataSource, NSTableV
         root.note2 = note2
         root.note3 = note3
 
-        verifyCheckbox.state = ScanSettings.shared.wolVerifyAfterWake ? .on : .off
+        verifyCheckbox.setOn(ScanSettings.shared.wolVerifyAfterWake)
         reload()
     }
 
@@ -490,7 +490,6 @@ final class WOLViewController: NSViewController, NSTableViewDataSource, NSTableV
     }
 
     @objc private func verifyToggled() {
-        verifyCheckbox.state = verifyCheckbox.state == .on ? .off : .on
         ScanSettings.shared.wolVerifyAfterWake = verifyCheckbox.state == .on
     }
 

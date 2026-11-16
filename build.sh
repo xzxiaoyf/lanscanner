@@ -108,6 +108,6 @@ codesign --verify --strict "$APP"
 
 echo "==> 完成: $(pwd)/$APP"
 echo "    架构: $(lipo -archs "$APP/Contents/MacOS/$APP_NAME")"
-echo "    版本: $(defaults read "$(pwd)/$APP/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo 1.1.3)"
+echo "    版本: $(defaults read "$(pwd)/$APP/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo 1.1.4)"
 echo "    运行: open \"$APP\""
 echo "    自检: \"$APP/Contents/MacOS/$APP_NAME\" --selftest"

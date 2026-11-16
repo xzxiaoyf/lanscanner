@@ -5,8 +5,8 @@ import Darwin
 // 版本自查：不启动 GUI，用于确认双击运行的 .app 是否为最新构建
 // 用法：LANScanner.app/Contents/MacOS/LANScanner --version
 if CommandLine.arguments.contains("--version") {
-    let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1.3"
-    let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1.1.3"
+    let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1.4"
+    let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1.1.4"
     let execPath = Bundle.main.executableURL?.path ?? CommandLine.arguments[0]
     let attrs = try? FileManager.default.attributesOfItem(atPath: execPath)
     var built = "未知"
@@ -58,9 +58,29 @@ if let index = CommandLine.arguments.firstIndex(of: "--uirender"),
     app.setActivationPolicy(.prohibited)
     app.appearance = NSAppearance(named: .darkAqua)
 
+    if mode == "checkbox" {
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 76))
+        root.wantsLayer = true
+        root.layer?.backgroundColor = Theme.window.cgColor
+        let off = CheckToggle(title: "未勾选（off）")
+        off.frame = NSRect(x: 20, y: 42, width: 280, height: 22)
+        let on = CheckToggle(title: "已勾选（on）")
+        on.setOn(true)
+        on.frame = NSRect(x: 20, y: 12, width: 280, height: 22)
+        root.addSubview(off)
+        root.addSubview(on)
+        let pdf = root.dataWithPDF(inside: root.bounds)
+        try? pdf.write(to: URL(fileURLWithPath: path))
+        print("已生成复选框状态预览: \(path)")
+        exit(0)
+    }
+
     if mode == "picker" {
         let picker = NetworkPickerController(networks: LocalNetwork.all())
         picker.showWindow(nil)
+        if ProcessInfo.processInfo.environment["LANSCANNER_UI_MANUAL"] == "1" {
+            picker.showManualPreview()
+        }
         guard let root = picker.window?.contentView else { exit(1) }
         root.layoutSubtreeIfNeeded()
         let pdf = root.dataWithPDF(inside: root.bounds)

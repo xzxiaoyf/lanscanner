@@ -127,7 +127,7 @@ final class NetworkPickerController: NSWindowController, NSTableViewDataSource, 
         }
         timeoutSegments.selectedIndex = Swift.min(Swift.max(settings.timeoutLevel, 0), 2)
         if settings.useManualRange {
-            manualCheckbox.state = .on
+            manualCheckbox.setOn(true)
             startField.stringValue = settings.manualStartIP
             endField.stringValue = settings.manualEndIP
         } else {
@@ -135,6 +135,13 @@ final class NetworkPickerController: NSWindowController, NSTableViewDataSource, 
         }
         updateManualState()
         tableView.selectRowIndexes(IndexSet(integer: selectedIndex), byExtendingSelection: false)
+    }
+
+    /// 仅用于离屏预览：展示「使用手动 IP 范围」勾选后的状态
+    func showManualPreview() {
+        manualCheckbox.setOn(true)
+        updateManualState()
+        window?.contentView?.layoutSubtreeIfNeeded()
     }
 
     private func fillRangeFromSelection() {
@@ -148,6 +155,9 @@ final class NetworkPickerController: NSWindowController, NSTableViewDataSource, 
         let manual = manualCheckbox.state == .on
         startLabel.textColor = manual ? Theme.text : Theme.secondary
         endLabel.textColor = manual ? Theme.text : Theme.secondary
+        // 未勾选时起止 IP 由所选接口自动填充，勾选后才允许编辑
+        startField.isEditable = manual
+        endField.isEditable = manual
     }
 
     // MARK: 表格
@@ -187,7 +197,7 @@ final class NetworkPickerController: NSWindowController, NSTableViewDataSource, 
     // MARK: 动作
 
     @objc private func manualToggled() {
-        manualCheckbox.state = manualCheckbox.state == .on ? .off : .on
+        // 状态切换与重绘由 CheckToggle.toggle() 完成，这里只处理联动副作用
         if manualCheckbox.state == .off { fillRangeFromSelection() }
         updateManualState()
     }

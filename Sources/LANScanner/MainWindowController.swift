@@ -4,10 +4,10 @@ import Foundation
 /// 版本信息：让用户可直接确认当前运行的是哪一次构建
 enum AppVersionInfo {
     static var short: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1.3"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1.4"
     }
     static var build: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1.1.3"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1.1.4"
     }
     static var executablePath: String {
         Bundle.main.executableURL?.path ?? CommandLine.arguments[0]

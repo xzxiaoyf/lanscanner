@@ -1,5 +1,16 @@
 import Foundation
 import Darwin
+import AppKit
+
+/// 用于验证复选框 action 是否按预期派发
+private final class CheckboxProbe: NSObject {
+    var fireCount = 0
+    var lastState: NSControl.StateValue = .off
+    @objc func changed(_ sender: CheckToggle) {
+        fireCount += 1
+        lastState = sender.state
+    }
+}
 
 /// 无界面自检，便于在终端验证核心能力：
 ///   LANScanner --selftest
@@ -37,6 +48,58 @@ enum CLISelfTest {
         assert(OUIEmbedded.text.utf8.count > 1_000_000, "内嵌 OUI 副本缺失")
         print("[OK] 解析器单元校验通过")
         print("[OK] OUI 数据库: \(OUIVendor.sourceDescription)（内嵌副本 \(OUIEmbedded.text.utf8.count) 字节可用）")
+
+        // 复选框：验证点击后状态保持、action 派发与自绘重绘（1.1.4 修复项）
+        let probe = CheckboxProbe()
+        let toggle = CheckToggle(title: "自检")
+        toggle.target = probe
+        toggle.action = #selector(CheckboxProbe.changed(_:))
+        let baseline = toggle.redrawCount
+        toggle.setOn(false)
+        toggle.toggle()
+        let firstOn = toggle.state == .on && probe.fireCount == 1 && probe.lastState == .on
+        toggle.toggle()
+        let secondOff = toggle.state == .off && probe.fireCount == 2 && probe.lastState == .off
+        let redraws = toggle.redrawCount - baseline
+        print(firstOn && secondOff && redraws == 3
+              ? "[OK] 复选框：off → on → off，action 各派发 1 次，显式重绘 \(redraws) 次"
+              : "[FAIL] 复选框状态切换异常 firstOn=\(firstOn) secondOff=\(secondOff) " +
+                "state=\(toggle.state.rawValue) action=\(probe.fireCount) redraw=\(redraws)")
+
+        // 事件链路：布局命中 → mouseDown → action → mouseUp。
+        // 命令行进程没有 GUI run loop，NSWindow.sendEvent 不会派发，故直接对控件投递事件。
+        let clickWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 80),
+                                   styleMask: [.titled], backing: .buffered, defer: false)
+        let clickRoot = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 80))
+        clickWindow.contentView = clickRoot
+        let clickToggle = CheckToggle(title: "点击事件测试")
+        clickToggle.frame = NSRect(x: 20, y: 30, width: 200, height: 22)
+        let clickProbe = CheckboxProbe()
+        clickToggle.target = clickProbe
+        clickToggle.action = #selector(CheckboxProbe.changed(_:))
+        clickRoot.addSubview(clickToggle)
+        let clickPoint = NSPoint(x: 28, y: 41)
+        // 方框与文字标签都应落在可点击区域内
+        let hitOK = clickRoot.hitTest(clickPoint) === clickToggle &&
+                    clickRoot.hitTest(NSPoint(x: 120, y: 41)) === clickToggle
+        if let down = NSEvent.mouseEvent(with: .leftMouseDown, location: clickPoint,
+                                         modifierFlags: [], timestamp: 0,
+                                         windowNumber: clickWindow.windowNumber,
+                                         context: nil, eventNumber: 1, clickCount: 1, pressure: 1) {
+            clickToggle.mouseDown(with: down)
+        }
+        let afterDown = clickToggle.state
+        if let up = NSEvent.mouseEvent(with: .leftMouseUp, location: clickPoint,
+                                       modifierFlags: [], timestamp: 0,
+                                       windowNumber: clickWindow.windowNumber,
+                                       context: nil, eventNumber: 2, clickCount: 1, pressure: 0) {
+            clickToggle.mouseUp(with: up)
+        }
+        let clickOK = afterDown == .on && clickToggle.state == .on && clickProbe.fireCount == 1
+        print(clickOK && hitOK
+              ? "[OK] 复选框点击事件：方框与文字均命中 → mouseDown 派发 action，mouseUp 未复位状态"
+              : "[FAIL] 点击事件链路异常 hit=\(hitOK) afterDown=\(afterDown.rawValue) " +
+                "final=\(clickToggle.state.rawValue) action=\(clickProbe.fireCount)")
 
         // WOL：Magic Packet 结构 / MAC 格式兼容 / 持久化 / 真实 UDP 广播
         let wolPacket = WOLService.makePacket(mac: "50:92:6A:28:7A:4C")

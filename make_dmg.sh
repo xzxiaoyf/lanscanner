@@ -20,7 +20,7 @@ if [ "$BUILD" = "1" ]; then
 fi
 
 # 版本号在构建之后读取，确保与新 Info.plist 一致
-VERSION="$(defaults read "$(pwd)/$APP/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo 1.1.3)"
+VERSION="$(defaults read "$(pwd)/$APP/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo 1.1.4)"
 OUT="${1:-dist/LANScanner-${VERSION}-Universal.dmg}"
 
 if [ ! -f "$EXE" ]; then
@@ -95,6 +95,13 @@ LANScanner ${VERSION}  ·  Universal
   OUI 厂商库与所需系统命令均已内置，完全离线可用，无需联网。
   顶部工具栏右侧会显示版本号（v${VERSION}），点 ⓘ 可查看构建时间；
   若显示的仍是旧版本号，说明打开的是旧副本或旧进程，请先退出应用再重开。
+
+【手动 IP 范围】
+  在「选择扫描网络」窗口右侧勾选「使用手动 IP 范围」后，
+  「起始 IP」「结束 IP」才允许编辑；取消勾选会恢复为所选接口
+  自动计算出的网段范围。方框或文字均可点击，也可用空格键切换。
+  ${VERSION} 修复了自绘复选框无法勾选的问题，设置面板与网络唤醒
+  页面中的同款复选框一并修复。
 
 【网络唤醒 (WOL)】
   扫描结果加入列表：点设备行右侧的电源按钮，或在右侧详情点「加入 WOL」，
@@ -259,8 +266,16 @@ ls -1 "$VERIFY" | sed 's/^/    /'
 echo "    架构: $(lipo -archs "$VERIFY/$EXE")"
 echo "    签名: $(codesign -dv "$VERIFY/$APP" 2>&1 | grep -E '^Signature=' || echo '无效')"
 echo "    OUI:  $(wc -l < "$VERIFY/$APP/Contents/Resources/oui.txt") 条"
-"$VERIFY/$EXE" --selftest > "$TMP/selftest.log" 2>&1 || true
-grep -E '^\[OK\]' "$TMP/selftest.log" | head -4 | sed 's/^/    /'
+if "$VERIFY/$EXE" --selftest > "$TMP/selftest.log" 2>&1; then
+    echo "    自检: 完整通过"
+else
+    echo "    自检: 异常退出"
+fi
+grep -E '^\[OK\]' "$TMP/selftest.log" | head -6 | sed 's/^/    /'
+if ! grep -q "端口扫描完成" "$TMP/selftest.log"; then
+    echo "    [WARN] 自检未跑到结束，可能中途崩溃："
+    tail -5 "$TMP/selftest.log" | sed 's/^/    /'
+fi
 hdiutil detach "$VERIFY" -force -quiet >/dev/null
 MNT=""
 
